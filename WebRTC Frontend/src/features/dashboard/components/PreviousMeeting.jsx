@@ -43,6 +43,7 @@ const PreviousMeeting = () => {
               key={index}
               title={meeting.title}
               description={meeting.description}
+              streamKey={meeting.streamKey}
             />
           ))
         )}

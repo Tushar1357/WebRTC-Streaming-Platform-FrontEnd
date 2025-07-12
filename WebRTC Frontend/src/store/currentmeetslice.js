@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   isLive: false,
   currentMeetInfo: {},
+  loading: true,
 };
 
 const currentMeetSlice = createSlice({
@@ -12,6 +13,11 @@ const currentMeetSlice = createSlice({
     updateCurrentMeet: (state, action) => {
       state.currentMeetInfo = action.payload;
       state.isLive = true;
+      state.loading = false;
+    },
+    setLoading: (state, action) => {
+      state.loading = false;
+      state.currentMeetInfo = {};
     },
   },
 });
