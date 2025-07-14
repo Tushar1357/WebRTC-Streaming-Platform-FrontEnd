@@ -8,7 +8,6 @@ const useProducer = (meetingId, isProducing) => {
   useEffect(() => {
     const connectProducer = async () => {
       const { localStream } = await producerSfu(meetingId);
-      console.log(localStream)
       setLocalStream(localStream);
     };
 

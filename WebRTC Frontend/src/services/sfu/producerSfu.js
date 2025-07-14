@@ -3,29 +3,16 @@ import {
   recvSocketMessage,
 } from "../../socket/socketClient";
 import * as mediasoup from "mediasoup-client";
-import socket from "../../socket/socket"; 
+import { getMediasoupDevice } from "./mediasoupInstance";
 
 const producerSfu = async (streamKey) => {
-  return new Promise(async (resolve, reject) => {
-    socket.connect(); 
+  const device = await getMediasoupDevice();
 
-    let device;
+  return new Promise(async (resolve, reject) => {
     let sendTransport;
     let localStream;
 
     const handlers = {
-      rtpCapabilities: async (data) => {
-        try {
-          device = new mediasoup.Device();
-          await device.load({ routerRtpCapabilities: data });
-
-          sendSocketMessage("createSendTransport");
-        } catch (err) {
-          console.error("Error loading device:", err);
-          reject(err);
-        }
-      },
-
       sendTransportCreated: async (data) => {
         try {
           localStream = await navigator.mediaDevices.getUserMedia({
@@ -33,32 +20,35 @@ const producerSfu = async (streamKey) => {
             audio: true,
           });
 
-          sendTransport = device.createSendTransport(data);
+          sendTransport = await device.createSendTransport(data);
 
-          sendTransport.on("connect", ({ dtlsParameters }, callback, errback) => {
-            sendSocketMessage("connectSendTransport", dtlsParameters);
-            callback();
-          });
+          sendTransport.on(
+            "connect",
+            ({ dtlsParameters }, callback, errback) => {
+              sendSocketMessage("connectSendTransport", dtlsParameters);
+              callback();
+            }
+          );
 
           sendTransport.on("produce", (params, callback, errback) => {
+            console.log(params.kind)
             sendSocketMessage("produce", {
               streamKey,
               kind: params.kind,
               rtpParameters: params.rtpParameters,
             });
 
-            recvSocketMessage({
+            recvSocketMessage("producer", {
               produced: ({ producerId }) => {
                 callback({ id: producerId });
                 resolve({ localStream });
               },
             });
           });
-          
-          localStream.getTracks().forEach((track) => {
-            sendTransport.produce({track})
-          })
 
+          localStream.getTracks().forEach(async (track) => {
+            await sendTransport.produce({ track });
+          });
         } catch (err) {
           console.error("Error setting up transport or media:", err);
           reject(err);
@@ -66,8 +56,8 @@ const producerSfu = async (streamKey) => {
       },
     };
 
-    recvSocketMessage(handlers);
-    sendSocketMessage("getRtpCapabilities");
+    recvSocketMessage("producer", handlers);
+    sendSocketMessage("createSendTransport");
   });
 };
 

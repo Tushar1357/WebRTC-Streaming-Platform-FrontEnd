@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState,useCallback } from "react";
 import ControlBar from "../components/ControlBar";
 import "./index.css";
 import MeetingInfo from "../components/MeetingInfo";
@@ -18,13 +18,11 @@ const MeetingPage = () => {
   const [isProducing, setIsProducing] = useState(false);
   const localStream = useProducer(params.meetingId, isProducing);
 
-  useConsumer(
-    params.meetingId,
-    (newStream) => {
-      setRemoteStreams((prev) => [...prev, newStream]);
-    },
-    !isProducing
-  );
+  const handleNewStream = useCallback((newStream) => {
+  setRemoteStreams((prev) => [...prev, newStream]);
+}, []);
+
+useConsumer(params.meetingId, handleNewStream, isProducing);
 
   const { currentMeetInfo, loading } = useSelector(
     (state) => state?.currentMeet

@@ -3,24 +3,15 @@ import {
   sendSocketMessage,
 } from "../../socket/socketClient";
 import * as mediasoup from "mediasoup-client";
+import { getMediasoupDevice } from "./mediasoupInstance";
 
-const consumerSfu = (streamKey, onNewStream) => {
+const consumerSfu = async (streamKey, onNewStream) => {
+  let recvTransport;
+
+  const device = await getMediasoupDevice();
+
   return new Promise((resolve, reject) => {
-    let device;
-    let recvTransport;
-
     const handlers = {
-      rtpCapabilities: async (data) => {
-        try {
-          device = new mediasoup.Device();
-          await device.load({ routerRtpCapabilities: data });
-          sendSocketMessage("createRecvTransport");
-        } catch (err) {
-          console.error("Device load failed", err);
-          reject(err);
-        }
-      },
-
       recvTransportCreated: async (data) => {
         try {
           recvTransport = device.createRecvTransport(data);
@@ -50,17 +41,17 @@ const consumerSfu = (streamKey, onNewStream) => {
           });
 
           const stream = new MediaStream([consumer.track]);
-
-          onNewStream(stream);
-          resolve();
+          if (data.kind === "video")
+            onNewStream(stream);
+          resolve(data.producerId);
         } catch (err) {
           console.error("Consume failed", err);
         }
       },
     };
 
-    recvSocketMessage(handlers);
-    sendSocketMessage("getRtpCapabilities");
+    recvSocketMessage("consumer", handlers);
+    sendSocketMessage("createRecvTransport");
   });
 };
 
