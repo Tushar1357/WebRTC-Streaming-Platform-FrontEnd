@@ -1,33 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import consumerSfu from "../services/sfu/consumerSfu";
 import { recvSocketMessage, sendSocketMessage } from "../socket/socketClient";
 
 const useConsumer = (meetingId, onNewStream, isProducing) => {
-  const [existingProducers, setExistingProducers] = useState([]);
+  const existingUsersRef = useRef(new Set());
 
   useEffect(() => {
-    if (!isProducing && meetingId) {
-      sendSocketMessage("join", { streamKey: meetingId });
+    if (!meetingId || isProducing) return;
 
-      consumerSfu(meetingId, onNewStream).then((initialProducerId) => {
-        if (initialProducerId && !existingProducers.includes(initialProducerId)) {
-          setExistingProducers((prev) => [initialProducerId, ...prev]);
-        }
-      });
+    sendSocketMessage("join", { streamKey: meetingId });
 
-      const handlers = {
-        new_producer_joined: (data) => {
-          if (!existingProducers.includes(data.producerId)) {
-            consumerSfu(meetingId, onNewStream).then(() => {
-              setExistingProducers((prev) => [data.producerId, ...prev]);
-            });
-          }
-        },
-      };
 
-      recvSocketMessage("consumer", handlers);
-    }
-  }, [meetingId, isProducing, onNewStream, existingProducers]);
+    consumerSfu(meetingId, (userId, stream) => {
+      // if (!existingUsersRef.current.has(userId)) {
+        onNewStream(userId, stream);
+        existingUsersRef.current.add(userId);
+      // }
+    }).catch((err) => console.error("Initial consume error:", err));
+
+
+    const handlers = {
+      new_producer_joined: (data) => {
+        const { userId } = data;
+        // if (!existingUsersRef.current.has(userId)) {
+          consumerSfu(meetingId, (userId, stream) => {
+            console.log(userId, stream)
+            onNewStream(userId, stream);
+            existingUsersRef.current.add(userId);
+          }).catch((err) => console.error("Dynamic consume error:", err));
+        // }
+      },
+    };
+
+    recvSocketMessage("consumer", handlers);
+  }, [meetingId, isProducing, onNewStream]);
 };
 
 export default useConsumer;

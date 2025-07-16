@@ -11,9 +11,9 @@ export const loginCall = async (value) => {
       body: JSON.stringify(value)
     })
     const data = await response.json();
-    
     if (data.status){
-      localStorage.setItem("token",data.data.token)
+      localStorage.setItem("token", data.data.token)
+      localStorage.setItem("userId", data.data.userId)
     }
     return data
   }

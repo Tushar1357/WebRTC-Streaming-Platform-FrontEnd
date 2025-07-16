@@ -11,7 +11,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     login(state, action) {
-      state.user = action.payload.user;
+      state.user = action.payload;
       state.isAuthenticated = true;
       state.loading = false;
     },
@@ -20,6 +20,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       localStorage.removeItem("token");
+      localStorage.removeItem("userId")
     },
     setLoading(state, action) {
       state.loading = action.payload;

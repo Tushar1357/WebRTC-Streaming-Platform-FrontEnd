@@ -16,8 +16,6 @@ export const recvSocketMessage = (role, handlers) => {
   for (const key of Object.keys(handlers)) {
     handlerMap.set(key, handlers[key]);
   }
-  console.log(consumerHandlers)
-  console.log(producerHandlers)
 
 
   if (role === "producer" && !isProducerListenerRegistered) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState,useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import ControlBar from "../components/ControlBar";
 import "./index.css";
 import MeetingInfo from "../components/MeetingInfo";
@@ -13,24 +13,37 @@ import useConsumer from "../../../hooks/useConsumer";
 const MeetingPage = () => {
   const params = useParams();
   const dispatch = useDispatch();
-  const [remoteStreams, setRemoteStreams] = useState([]);
 
-  const [isProducing, setIsProducing] = useState(false);
-  const localStream = useProducer(params.meetingId, isProducing);
+  const [isVideoProducing, setIsVideoProducing] = useState(false);
+  const [isAudioProducing, setIsAudioProducing] = useState(false);
 
-  const handleNewStream = useCallback((newStream) => {
-  setRemoteStreams((prev) => [...prev, newStream]);
-}, []);
+  const localStream = useProducer(
+    params.meetingId,
+    isVideoProducing,
+    isAudioProducing
+  );
 
-useConsumer(params.meetingId, handleNewStream, isProducing);
+  const remoteStreams = useRef(new Map());
+  const [renderFlag, setRenderFlag] = useState(0);
+
+  const handleNewStream = useCallback((userId, stream) => {
+    remoteStreams.current.set(userId, stream);
+    console.log(remoteStreams.current);
+    setRenderFlag((v) => v + 1);
+  }, []);
+
+  useConsumer(
+    params.meetingId,
+    handleNewStream,
+    isVideoProducing || isAudioProducing
+  );
 
   const { currentMeetInfo, loading } = useSelector(
     (state) => state?.currentMeet
   );
 
-  const handleToggleVideo = () => {
-    setIsProducing((prev) => !prev);
-  };
+  const handleToggleVideo = () => setIsVideoProducing((prev) => !prev);
+  const handleToggleAudio = () => setIsAudioProducing((prev) => !prev);
 
   const handleLeave = () => {
     console.log("Leaving meeting...");
@@ -77,7 +90,7 @@ useConsumer(params.meetingId, handleNewStream, isProducing);
 
       <main className="flex-grow-1 px-3 py-2 mb-5">
         <div className="row g-3">
-          {isProducing && localStream && (
+          {localStream && (
             <video
               width={100}
               height={400}
@@ -91,18 +104,24 @@ useConsumer(params.meetingId, handleNewStream, isProducing);
             />
           )}
 
-          {remoteStreams.map((stream, idx) => (
+          {[...remoteStreams.current.values()].map((stream, idx) => (
             <video
               key={idx}
               autoPlay
               playsInline
               ref={(el) => {
-                if (el && stream) el.srcObject = stream;
+                if (el && stream) {
+                  el.srcObject = stream;
+                  el.play().catch((err) => {
+                    console.error("Auto-play failed:", err);
+                  });
+                }
               }}
-              muted={false}
+              muted={true}
               className="rounded bg-dark"
               width={300}
               height={200}
+              // controls
             />
           ))}
         </div>
@@ -111,8 +130,10 @@ useConsumer(params.meetingId, handleNewStream, isProducing);
       <footer className="border-top mt-5">
         <ControlBar
           onLeave={handleLeave}
-          handleIsProducing={handleToggleVideo}
-          isProducing={isProducing}
+          handleIsVideoProducing={handleToggleVideo}
+          isVideoProducing={isVideoProducing}
+          handleIsAudioProducing={handleToggleAudio}
+          isAudioProducing={isAudioProducing}
         />
       </footer>
     </div>

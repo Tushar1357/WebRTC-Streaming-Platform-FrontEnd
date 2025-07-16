@@ -2,13 +2,12 @@ import {
   recvSocketMessage,
   sendSocketMessage,
 } from "../../socket/socketClient";
-import * as mediasoup from "mediasoup-client";
 import { getMediasoupDevice } from "./mediasoupInstance";
 
 const consumerSfu = async (streamKey, onNewStream) => {
   let recvTransport;
-
   const device = await getMediasoupDevice();
+  const userStreams = new Map();
 
   return new Promise((resolve, reject) => {
     const handlers = {
@@ -40,10 +39,24 @@ const consumerSfu = async (streamKey, onNewStream) => {
             rtpParameters: data.rtpParameters,
           });
 
-          const stream = new MediaStream([consumer.track]);
-          if (data.kind === "video")
-            onNewStream(stream);
-          resolve(data.producerId);
+          let stream;
+          const userId = data.userId;
+
+          if (userStreams.has(userId)) {
+            stream = userStreams.get(userId);
+          } else {
+            stream = new MediaStream();
+            userStreams.set(userId, stream);
+          }
+
+          stream.addTrack(consumer.track);
+
+
+          if (stream.getTracks().length === 1) {
+            onNewStream(userId, stream);
+          }
+
+          resolve(userId);
         } catch (err) {
           console.error("Consume failed", err);
         }

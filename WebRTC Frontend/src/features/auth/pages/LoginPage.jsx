@@ -34,7 +34,7 @@ const LoginPage = () => {
       const response = await loginCall(values);
       if (response.status) {
         toast.success(response.message);
-        dispatch(authActions.login({ user: response.message }));
+        dispatch(authActions.login(response.data));
         navigate("/dashboard");
       } else {
         toast.error(response.message);

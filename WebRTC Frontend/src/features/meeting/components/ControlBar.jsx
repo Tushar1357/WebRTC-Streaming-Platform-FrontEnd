@@ -1,26 +1,34 @@
 import React from "react";
 import { FaMicrophone, FaVideo, FaPhoneSlash } from "react-icons/fa";
 
-const ControlBar = ({ onLeave, handleIsProducing, isProducing }) => {
+const ControlBar = ({
+  onLeave,
+  handleIsVideoProducing,
+  isVideoProducing,
+  handleIsAudioProducing,
+  isAudioProducing,
+}) => {
   return (
     <div className="control-bar d-flex justify-content-center gap-4 py-3 bg-dark">
-      <button className="btn btn-outline-light rounded-circle">
+      <button
+        className={`btn rounded-circle ${
+          isAudioProducing ? "btn-success" : "btn-outline-light btn-danger"
+        }`}
+        onClick={handleIsAudioProducing}
+      >
         <FaMicrophone />
       </button>
 
       <button
-        className={`btn rounded-circle ${
-          isProducing ? "btn-success" : "btn-outline-light"
+        className={`btn btn rounded-circle ${
+          isVideoProducing ? "btn-success" : "btn-outline-light btn-danger"
         }`}
-        onClick={handleIsProducing}
+        onClick={handleIsVideoProducing}
       >
         <FaVideo />
       </button>
 
-      <button
-        className="btn btn-danger rounded-circle"
-        onClick={onLeave}
-      >
+      <button className="btn btn-danger rounded-circle" onClick={onLeave}>
         <FaPhoneSlash />
       </button>
     </div>

@@ -5,7 +5,20 @@ import {
 import * as mediasoup from "mediasoup-client";
 import { getMediasoupDevice } from "./mediasoupInstance";
 
-const producerSfu = async (streamKey) => {
+const localStreamMap = new Map();
+
+const getOrCreateLocalStream = async (userId, isVideoProducing, isAudioProducing) => {
+  if (!localStreamMap.has(userId)) {
+    const localStream = await navigator.mediaDevices.getUserMedia({
+      video: isVideoProducing,
+      audio: isAudioProducing,
+    });
+    localStreamMap.set(userId, localStream);
+  }
+  return localStreamMap.get(userId);
+};
+
+const producerSfu = async (streamKey, userId, isVideoProducing, isAudioProducing) => {
   const device = await getMediasoupDevice();
 
   return new Promise(async (resolve, reject) => {
@@ -15,23 +28,18 @@ const producerSfu = async (streamKey) => {
     const handlers = {
       sendTransportCreated: async (data) => {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
+
+          localStream = await getOrCreateLocalStream(userId, isVideoProducing, isAudioProducing);
+
 
           sendTransport = await device.createSendTransport(data);
 
-          sendTransport.on(
-            "connect",
-            ({ dtlsParameters }, callback, errback) => {
-              sendSocketMessage("connectSendTransport", dtlsParameters);
-              callback();
-            }
-          );
+          sendTransport.on("connect", ({ dtlsParameters }, callback) => {
+            sendSocketMessage("connectSendTransport", dtlsParameters);
+            callback();
+          });
 
-          sendTransport.on("produce", (params, callback, errback) => {
-            console.log(params.kind)
+          sendTransport.on("produce", (params, callback) => {
             sendSocketMessage("produce", {
               streamKey,
               kind: params.kind,
@@ -41,14 +49,16 @@ const producerSfu = async (streamKey) => {
             recvSocketMessage("producer", {
               produced: ({ producerId }) => {
                 callback({ id: producerId });
-                resolve({ localStream });
               },
             });
           });
 
-          localStream.getTracks().forEach(async (track) => {
-            await sendTransport.produce({ track });
+          const producePromises = localStream.getTracks().map(async (track) => {
+            return await sendTransport.produce({ track });
           });
+
+          await Promise.all(producePromises);
+          resolve({ localStream });
         } catch (err) {
           console.error("Error setting up transport or media:", err);
           reject(err);
